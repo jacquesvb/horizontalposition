@@ -54,15 +54,12 @@ StartFrame:
 	lda P0XPos	; load register A with desired X position
         and #$7F	; same as AND 01111111, forces bit 7 to zero
         		; keeping the value inside A always positive
-
+	sec		; set carry flag before subtraction
 	sta WSYNC	; wait for next scanline
         sta HMCLR	; clear old horizontal position values
-        
-        sec		; set carry flag before subtraction
 DivideLoop:
 	sbc #15		; A -= 15
         bcs DivideLoop	; loop while carry flag is still set
-        
         eor #7		; adjust the remainder in A between -8 and 7
         asl		; shift left by 4, as HMP0 uses only 4 bits
         asl
@@ -114,17 +111,24 @@ DrawBitmap:
 ;; Output 30 more VBLANK overscan lines to complete our frame
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 Overscan:
-    lda #2
-    sta VBLANK     ; turn VBLANK on again for overscan
-    REPEAT 30
-        sta WSYNC
-    REPEND
+    	lda #2
+    	sta VBLANK     ; turn VBLANK on again for overscan
+    	REPEAT 30
+            sta WSYNC
+    	REPEND
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Increment X coordinate before next frame for animation.
+;; Increment X coordinate if we are between 40 and 80 pixels
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    inc P0XPos
-
+    	lda P0XPos		; load A with the player current X position
+    	cmp #80		; compare the value with 80
+	bpl ResetXPos	; if A is greater, then reset position
+	jmp IncrmXPos	; else, continue to increment the position
+ResetXPos:
+	lda #40
+        sta P0XPos	; reset the player X position to 40
+IncrmXPos:
+	inc P0XPos	; increment the player X position
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Loop to next frame
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
